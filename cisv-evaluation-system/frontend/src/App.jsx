@@ -28,22 +28,37 @@ function App() {
 
   // Khôi phục state từ localStorage khi app khởi động
   useEffect(() => {
+    console.log('🚀 App component mounted');
+    console.log('💾 Attempting to restore state from localStorage...');
+    
     try {
       const savedState = localStorageService.getItem('app_state');
+      console.log('📥 Saved state from localStorage:', savedState);
+      
       if (savedState) {
+        console.log('✅ Restoring state:', savedState);
         setSelectedCamp(savedState.selectedCamp || null);
         setSelectedSubcamp(savedState.selectedSubcamp || null);
         setSelectedLeader(savedState.selectedLeader || null);
+      } else {
+        console.log('ℹ️ No saved state found');
       }
     } catch (error) {
-      console.error('Lỗi khôi phục state:', error);
+      console.error('❌ Error restoring state:', error);
       toast.warn('Không thể khôi phục dữ liệu đã lưu trước đó');
     }
     setIsLoading(false);
+    console.log('✅ App initialization completed');
   }, []);
 
   // Lưu state vào localStorage mỗi khi có thay đổi
   useEffect(() => {
+    console.log('💾 Saving app state to localStorage:', {
+      selectedCamp: selectedCamp?.name,
+      selectedSubcamp: selectedSubcamp?.name,
+      selectedLeader: selectedLeader?.name
+    });
+    
     const appState = {
       selectedCamp,
       selectedSubcamp,
@@ -55,21 +70,25 @@ function App() {
 
   // Handlers cho việc chọn camp, subcamp, leader
   const handleCampSelect = (camp) => {
+    console.log('🏕️ Camp selected in App:', camp);
     setSelectedCamp(camp);
     setSelectedSubcamp(null);
     setSelectedLeader(null);
   };
 
   const handleSubcampSelect = (subcamp) => {
+    console.log('🏘️ Subcamp selected in App:', subcamp);
     setSelectedSubcamp(subcamp);
     setSelectedLeader(null);
   };
 
   const handleLeaderSelect = (leader) => {
+    console.log('👨‍🏫 Leader selected in App:', leader);
     setSelectedLeader(leader);
   };
 
   const handleReset = () => {
+    console.log('🔄 Resetting app state');
     setSelectedCamp(null);
     setSelectedSubcamp(null);
     setSelectedLeader(null);

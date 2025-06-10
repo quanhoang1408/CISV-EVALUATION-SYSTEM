@@ -78,9 +78,22 @@ const autoSaveEvaluation = async (req, res) => {
 // Submit đánh giá cuối cùng
 const submitEvaluation = async (req, res) => {
   try {
+    console.log('📤 Submit evaluation request received:', {
+      body: req.body,
+      headers: req.headers['content-type']
+    });
+
     const { leaderId, subcampId, campId, evaluations } = req.body;
 
+    console.log('📋 Processing submission data:', {
+      leaderId,
+      subcampId,
+      campId,
+      evaluationsCount: evaluations?.length || 0
+    });
+
     if (!leaderId || !evaluations || evaluations.length === 0) {
+      console.log('❌ Validation failed: Missing required data');
       return res.status(400).json({
         success: false,
         message: 'Dữ liệu không hợp lệ'
@@ -90,6 +103,7 @@ const submitEvaluation = async (req, res) => {
     // Validate: check if all required evaluations are completed
     const incompleteEvaluations = evaluations.filter(eval => !eval.rating || eval.rating === 0);
     if (incompleteEvaluations.length > 0) {
+      console.log('❌ Validation failed: Incomplete evaluations:', incompleteEvaluations.length);
       return res.status(400).json({
         success: false,
         message: 'Vui lòng hoàn thành tất cả đánh giá trước khi nộp',
@@ -104,26 +118,43 @@ const submitEvaluation = async (req, res) => {
       submittedAt: eval.submittedAt || new Date()
     }));
 
+    console.log('💾 Attempting bulk save with', evaluationArray.length, 'evaluations');
     const result = await Evaluation.bulkSave(evaluationArray);
+    console.log('✅ Bulk save result:', {
+      modifiedCount: result.modifiedCount,
+      upsertedCount: result.upsertedCount,
+      matchedCount: result.matchedCount
+    });
 
     // Update leader status
+    console.log('👨‍🏫 Updating leader status for:', leaderId);
     await Leader.findByIdAndUpdate(leaderId, {
       'evaluationProgress.status': 'completed',
       'evaluationProgress.submittedAt': new Date()
     });
+    console.log('✅ Leader status updated');
 
     // Update subcamp stats
+    console.log('🏘️ Updating subcamp stats for:', subcampId);
     await updateSubcampStats(subcampId);
+    console.log('✅ Subcamp stats updated');
 
-    res.json({
+    const response = {
       success: true,
       message: 'Đánh giá đã được nộp thành công',
       submittedCount: result.modifiedCount + result.upsertedCount,
       submittedAt: new Date().toISOString()
-    });
+    };
+
+    console.log('📤 Sending success response:', response);
+    res.json(response);
 
   } catch (error) {
-    console.error('Error submitting evaluation:', error);
+    console.error('❌ Error submitting evaluation:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     res.status(500).json({
       success: false,
       message: 'Không thể nộp đánh giá',

@@ -148,13 +148,54 @@ function CampSelection({ onCampSelect, selectedCamp }) {
     loadCamps();
   }, []);
 
+  // Debug state changes
+  useEffect(() => {
+    console.log('🔄 Camps state changed:', camps);
+    console.log('🔄 Loading state:', loading);
+    console.log('🔄 Search term:', searchTerm);
+  }, [camps, loading, searchTerm]);
+
   const loadCamps = async () => {
     try {
       setLoading(true);
+      console.log('🚀 Bắt đầu tải danh sách trại...');
+      
       const response = await apiService.getCamps();
-      setCamps(response.data || []);
+      console.log('📡 Full API Response:', response);
+      console.log('📊 Response data:', response.data);
+      console.log('📋 Response structure:', Object.keys(response));
+      console.log('🔍 Is response.data array?', Array.isArray(response.data));
+      
+      // Kiểm tra cấu trúc response
+      let campsData = [];
+      if (response.data) {
+        if (Array.isArray(response.data)) {
+          // Trường hợp response.data là array trực tiếp
+          campsData = response.data;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          // Trường hợp response.data.data là array (nested)
+          campsData = response.data.data;
+        } else if (response.data.success && Array.isArray(response.data.data)) {
+          // Trường hợp có success flag
+          campsData = response.data.data;
+        }
+      }
+      
+      console.log('🎯 Final camps data:', campsData);
+      console.log('🔢 Number of camps:', campsData.length);
+      
+      setCamps(campsData);
+      console.log('✅ Đã set camps:', campsData.length, 'trại');
+      
     } catch (error) {
-      console.error('Lỗi tải danh sách trại:', error);
+      console.error('❌ Lỗi tải danh sách trại:', error);
+      console.error('🔍 Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data
+      });
+      
       toast.error('Không thể tải danh sách trại');
       // Dữ liệu demo nếu API lỗi
       setCamps([
@@ -179,6 +220,7 @@ function CampSelection({ onCampSelect, selectedCamp }) {
       ]);
     } finally {
       setLoading(false);
+      console.log('🏁 Loading finished, setLoading(false) called');
     }
   };
 
@@ -186,6 +228,13 @@ function CampSelection({ onCampSelect, selectedCamp }) {
     camp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     camp.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Debug filtered camps
+  useEffect(() => {
+    console.log('🔍 Filtered camps:', filteredCamps);
+    console.log('🔍 Original camps length:', camps.length);
+    console.log('🔍 Filtered camps length:', filteredCamps.length);
+  }, [filteredCamps, camps]);
 
   const handleCampSelect = (camp) => {
     onCampSelect(camp);

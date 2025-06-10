@@ -1,11 +1,28 @@
 const Camp = require('../models/Camp');
 
+// @desc    Get all camps
+// @route   GET /api/camps
+// @access  Public
 const getAllCamps = async (req, res) => {
   try {
-    const camps = await Camp.find().sort({ startDate: -1 });
-    res.json({ success: true, data: camps });
+    console.log('🏕️ Getting all camps...');
+    
+    const camps = await Camp.find().sort({ createdAt: -1 });
+    console.log('📊 Found camps:', camps.length);
+    console.log('🔍 Camps data:', camps);
+    
+    res.status(200).json({
+      success: true,
+      count: camps.length,
+      data: camps
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Không thể tải camps', error: error.message });
+    console.error('❌ Error getting camps:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server khi tải danh sách trại',
+      error: error.message
+    });
   }
 };
 

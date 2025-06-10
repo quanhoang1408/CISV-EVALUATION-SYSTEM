@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { FaUser, FaChildren, FaArrowRight, FaArrowLeft, FaCheck, FaClock, FaPlay } from 'react-icons/fa';
+import { FaUser, FaChild, FaArrowRight, FaArrowLeft, FaCheck, FaClock, FaPlay } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { apiService } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -269,19 +269,50 @@ function LeaderSelection({ camp, subcamp, onLeaderSelect, selectedLeader }) {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log('LeaderSelection mounted with:', { camp, subcamp });
     loadLeaders();
   }, [subcamp._id]);
 
   const loadLeaders = async () => {
     try {
+      console.log('🔄 Loading leaders for subcamp:', subcamp._id);
       setLoading(true);
       const response = await apiService.getLeadersBySubcamp(subcamp._id);
-      setLeaders(response.data || []);
+      
+      console.log('📥 Full API Response:', response);
+      console.log('📥 Response.data:', response.data);
+      console.log('📥 Response.data type:', typeof response.data);
+      console.log('📥 Is response.data array?', Array.isArray(response.data));
+      
+      // API trả về structure: {success: true, data: Array}
+      let leadersData = [];
+      if (response && response.data) {
+        if (Array.isArray(response.data)) {
+          // Trường hợp response.data là array trực tiếp
+          leadersData = response.data;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          // Trường hợp response.data là object với property data
+          console.log('📥 Found nested data array:', response.data.data);
+          leadersData = response.data.data;
+        } else {
+          console.log('⚠️ response.data structure unexpected:', response.data);
+          leadersData = [];
+        }
+      } else {
+        console.log('⚠️ No response.data found');
+        leadersData = [];
+      }
+      
+      console.log('👥 Leaders loaded:', leadersData);
+      console.log('👥 Leaders count:', leadersData.length);
+      setLeaders(leadersData);
     } catch (error) {
-      console.error('Lỗi tải danh sách leader:', error);
+      console.error('❌ Lỗi tải danh sách leader:', error);
+      console.log('🔧 Using fallback demo data');
       toast.error('Không thể tải danh sách leader');
-      // Dữ liệu demo
-      setLeaders([
+      
+      // Set demo data as fallback
+      const demoData = [
         {
           _id: 'leader1',
           name: 'Nguyễn Minh Tuấn',
@@ -321,24 +352,35 @@ function LeaderSelection({ camp, subcamp, onLeaderSelect, selectedLeader }) {
           evaluationStatus: 'completed',
           progress: 100
         }
-      ]);
+      ];
+      
+      console.log('📋 Demo data set:', demoData);
+      setLeaders(demoData);
     } finally {
       setLoading(false);
+      console.log('✅ Loading completed');
     }
   };
 
   const handleLeaderSelect = (leader) => {
+    console.log('👤 Leader selected:', leader);
+    
     if (leader.evaluationStatus === 'completed') {
+      console.log('⚠️ Leader already completed evaluation');
       toast.info('Leader này đã hoàn thành đánh giá');
       return;
     }
 
+    console.log('✅ Calling onLeaderSelect with:', leader);
     onLeaderSelect(leader);
     toast.success(`Đã chọn leader: ${leader.name}`);
+    
+    console.log('🔀 Navigating to /evaluation');
     navigate('/evaluation');
   };
 
   const handleBack = () => {
+    console.log('⬅️ Going back to subcamp selection');
     navigate('/subcamp');
   };
 
@@ -384,7 +426,7 @@ function LeaderSelection({ camp, subcamp, onLeaderSelect, selectedLeader }) {
     <Container>
       <Header>
         <Title>Chọn Leader</Title>
-        <Subtitle>{camp.name} • {subcamp.name}</Subtitle>
+        <Subtitle>{camp?.name} • {subcamp?.name}</Subtitle>
       </Header>
 
       <BreadcrumbNav>
@@ -395,68 +437,80 @@ function LeaderSelection({ camp, subcamp, onLeaderSelect, selectedLeader }) {
       </BreadcrumbNav>
 
       <LeadersGrid>
-        {leaders.map((leader) => {
-          const statusInfo = getStatusInfo(leader.evaluationStatus, leader.progress);
+        {Array.isArray(leaders) && leaders.length > 0 ? (
+          leaders.map((leader) => {
+            const statusInfo = getStatusInfo(leader.evaluationStatus, leader.progress);
 
-          return (
-            <LeaderCard
-              key={leader._id}
-              selected={selectedLeader?._id === leader._id}
-              onClick={() => handleLeaderSelect(leader)}
-            >
-              <StatusBadge status={leader.evaluationStatus}>
-                {statusInfo.icon}
-                {statusInfo.text}
-              </StatusBadge>
-
-              <LeaderInfo>
-                <Avatar>
-                  {leader.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                </Avatar>
-                <LeaderDetails>
-                  <h3>{leader.name}</h3>
-                  <p>{leader.email}</p>
-                </LeaderDetails>
-              </LeaderInfo>
-
-              <KidsSection>
-                <SectionTitle>
-                  <FaChildren />
-                  Trẻ em được phân công ({leader.kids?.length || 0})
-                </SectionTitle>
-                <KidsGrid>
-                  {leader.kids?.map(kid => (
-                    <KidChip key={kid._id}>
-                      <div className="name">{kid.name}</div>
-                      <div className="age">{kid.age} tuổi</div>
-                    </KidChip>
-                  ))}
-                </KidsGrid>
-              </KidsSection>
-
-              {leader.evaluationStatus !== 'not-started' && (
-                <ProgressSection>
-                  <SectionTitle>Tiến độ đánh giá</SectionTitle>
-                  <ProgressBar>
-                    <ProgressFill percentage={leader.progress} />
-                  </ProgressBar>
-                  <ProgressText>
-                    <span>{leader.progress}% hoàn thành</span>
-                  </ProgressText>
-                </ProgressSection>
-              )}
-
-              <ActionButton
-                variant={statusInfo.variant}
-                disabled={leader.evaluationStatus === 'completed'}
+            return (
+              <LeaderCard
+                key={leader._id}
+                selected={selectedLeader?._id === leader._id}
+                onClick={() => handleLeaderSelect(leader)}
               >
-                {statusInfo.icon}
-                <span>{getButtonText(leader.evaluationStatus)}</span>
-                {leader.evaluationStatus !== 'completed' && <FaArrowRight />}
-              </ActionButton>
-            </LeaderCard>
-          );
-        })}
+                <StatusBadge status={leader.evaluationStatus}>
+                  {statusInfo.icon}
+                  {statusInfo.text}
+                </StatusBadge>
+
+                <LeaderInfo>
+                  <Avatar>
+                    {leader.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'L'}
+                  </Avatar>
+                  <LeaderDetails>
+                    <h3>{leader.name || 'Tên không xác định'}</h3>
+                    <p>{leader.email || 'Email không xác định'}</p>
+                  </LeaderDetails>
+                </LeaderInfo>
+
+                <KidsSection>
+                  <SectionTitle>
+                    <FaChild />
+                    Trẻ em được phân công ({leader.kids?.length || 0})
+                  </SectionTitle>
+                  <KidsGrid>
+                    {leader.kids?.map(kid => (
+                      <KidChip key={kid._id}>
+                        <div className="name">{kid.name}</div>
+                        <div className="age">{kid.age} tuổi</div>
+                      </KidChip>
+                    )) || null}
+                  </KidsGrid>
+                </KidsSection>
+
+                {leader.evaluationStatus !== 'not-started' && (
+                  <ProgressSection>
+                    <SectionTitle>Tiến độ đánh giá</SectionTitle>
+                    <ProgressBar>
+                      <ProgressFill percentage={leader.progress || 0} />
+                    </ProgressBar>
+                    <ProgressText>
+                      <span>{leader.progress || 0}% hoàn thành</span>
+                    </ProgressText>
+                  </ProgressSection>
+                )}
+
+                <ActionButton
+                  variant={statusInfo.variant}
+                  disabled={leader.evaluationStatus === 'completed'}
+                >
+                  {statusInfo.icon}
+                  <span>{getButtonText(leader.evaluationStatus)}</span>
+                  {leader.evaluationStatus !== 'completed' && <FaArrowRight />}
+                </ActionButton>
+              </LeaderCard>
+            );
+          })
+        ) : (
+          <div style={{ 
+            gridColumn: '1 / -1', 
+            textAlign: 'center', 
+            color: 'white', 
+            fontSize: '1.2rem',
+            padding: '2rem'
+          }}>
+            Không có leader nào trong trại nhỏ này
+          </div>
+        )}
       </LeadersGrid>
     </Container>
   );

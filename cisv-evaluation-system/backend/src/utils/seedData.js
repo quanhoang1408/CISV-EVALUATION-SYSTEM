@@ -32,15 +32,15 @@ const clearDatabase = async () => {
 const seedCamps = async () => {
   const camps = [
     {
-      name: 'CISV Summer Camp 2024',
-      description: 'Trại hè quốc tế CISV 2024 - Kết nối và hiểu biết',
-      startDate: new Date('2024-07-15'),
-      endDate: new Date('2024-07-25'),
+      name: 'Meme Summer Camp 2025',
+      description: 'Inside Out 2',
+      startDate: new Date('2025-06-05'),
+      endDate: new Date('2025-06-08'),
       location: {
         country: 'Vietnam',
-        city: 'Ho Chi Minh',
+        city: 'Ha Noi',
         venue: 'CISV Camp Center',
-        address: '123 Camp Street, District 1'
+        address: 'Sentia School'
       },
       status: 'active',
       totalParticipants: 120
@@ -55,14 +55,14 @@ const seedCamps = async () => {
 const seedSubcamps = async (camps) => {
   const subcamps = [
     {
-      name: 'Red Dragons',
+      name: 'Chảnh Chọe',
       description: 'Đội Rồng Đỏ - Năng động và sáng tạo',
       campId: camps[0]._id,
       color: '#ff4757',
       maxLeaders: 8
     },
     {
-      name: 'Blue Eagles',
+      name: 'Xí Hổ',
       description: 'Đội Đại Bàng Xanh - Mạnh mẽ và đoàn kết',
       campId: camps[0]._id,
       color: '#3742fa',

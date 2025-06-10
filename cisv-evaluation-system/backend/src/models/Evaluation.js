@@ -210,7 +210,7 @@ evaluationSchema.statics.getLeaderboardData = function(campId) {
     },
     {
       $match: {
-        'camp._id': mongoose.Types.ObjectId(campId)
+        'camp._id': new mongoose.Types.ObjectId(campId)
       }
     },
     {
@@ -245,7 +245,7 @@ evaluationSchema.statics.getLeaderboardData = function(campId) {
 evaluationSchema.statics.getSubcampProgress = function(subcampId) {
   return this.aggregate([
     {
-      $match: { subcampId: mongoose.Types.ObjectId(subcampId) }
+      $match: { subcampId: new mongoose.Types.ObjectId(subcampId) }
     },
     {
       $group: {

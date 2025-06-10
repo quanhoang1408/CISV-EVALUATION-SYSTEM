@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { FaSave, FaCheck, FaWifi, FaWifiSlash, FaChild, FaStar } from 'react-icons/fa';
+import { FaSave, FaCheck, FaWifi, FaTimes, FaChild, FaStar } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { apiService } from '../services/api';
 import { useEvaluation } from '../contexts/EvaluationContext';
@@ -257,30 +257,30 @@ const SubmitButton = styled(ActionButton)`
   color: white;
 `;
 
-// Câu hỏi đánh giá mẫu
-const EVALUATION_QUESTIONS = [
+// Câu hỏi đánh giá mẫu - sẽ được thay thế bằng data từ API
+const FALLBACK_QUESTIONS = [
   {
-    id: 1,
+    _id: 'fallback1',
     text: "Khả năng tham gia hoạt động",
     category: "participation"
   },
   {
-    id: 2,
+    _id: 'fallback2', 
     text: "Tinh thần đồng đội và hợp tác",
     category: "teamwork"
   },
   {
-    id: 3,
-    text: "Khả năng lãnh đạo và sáng kiến",
+    _id: 'fallback3',
+    text: "Khả năng lãnh đạo và sáng kiến", 
     category: "leadership"
   },
   {
-    id: 4,
+    _id: 'fallback4',
     text: "Giao tiếp và kỹ năng xã hội",
     category: "communication"
   },
   {
-    id: 5,
+    _id: 'fallback5',
     text: "Thái độ và hành vi tích cực",
     category: "behavior"
   }
@@ -288,7 +288,7 @@ const EVALUATION_QUESTIONS = [
 
 function EvaluationForm({ camp, subcamp, leader }) {
   const [kids, setKids] = useState([]);
-  const [questions, setQuestions] = useState(EVALUATION_QUESTIONS);
+  const [questions, setQuestions] = useState([]);
   const [evaluations, setEvaluations] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -304,39 +304,119 @@ function EvaluationForm({ camp, subcamp, leader }) {
 
   const loadData = async () => {
     try {
+      console.log('🔄 Loading evaluation data for leader:', leader._id);
       setLoading(true);
 
       // Tải danh sách kids của leader
       try {
+        console.log('👶 Fetching kids for leader:', leader._id);
         const kidsResponse = await apiService.getKidsByLeader(leader._id);
-        setKids(kidsResponse.data || []);
+        
+        console.log('📥 Kids API Response:', kidsResponse);
+        console.log('📥 Kids Response.data:', kidsResponse.data);
+        console.log('📥 Kids Response.data type:', typeof kidsResponse.data);
+        console.log('📥 Is kids response.data array?', Array.isArray(kidsResponse.data));
+        
+        // Xử lý response structure tương tự như LeaderSelection
+        let kidsData = [];
+        if (kidsResponse && kidsResponse.data) {
+          if (Array.isArray(kidsResponse.data)) {
+            // Trường hợp response.data là array trực tiếp
+            kidsData = kidsResponse.data;
+          } else if (kidsResponse.data.data && Array.isArray(kidsResponse.data.data)) {
+            // Trường hợp response.data là object với property data
+            console.log('📥 Found nested kids data array:', kidsResponse.data.data);
+            kidsData = kidsResponse.data.data;
+          } else {
+            console.log('⚠️ kids response.data structure unexpected:', kidsResponse.data);
+            kidsData = [];
+          }
+        } else {
+          console.log('⚠️ No kids response.data found');
+          kidsData = [];
+        }
+
+        console.log('👶 Kids loaded:', kidsData);
+        console.log('👶 Kids count:', kidsData.length);
+        setKids(kidsData);
       } catch (error) {
-        console.error('Lỗi tải kids:', error);
-        // Dữ liệu demo nếu API lỗi
-        setKids([
-          { _id: 'kid1', name: 'Nguyễn Văn A', age: 12, nationality: 'Vietnam' },
-          { _id: 'kid2', name: 'Trần Thị B', age: 11, nationality: 'Vietnam' },
-          { _id: 'kid3', name: 'Lê Minh C', age: 13, nationality: 'Vietnam' },
-          { _id: 'kid4', name: 'Phạm Thu D', age: 12, nationality: 'Vietnam' }
-        ]);
+        console.error('❌ Lỗi tải kids:', error);
+        console.log('🔧 Using demo kids data');
+        // Sử dụng kids data từ leader object nếu có
+        if (leader.kids && Array.isArray(leader.kids)) {
+          console.log('📋 Using kids from leader object:', leader.kids);
+          setKids(leader.kids);
+        } else {
+          // Dữ liệu demo nếu API lỗi và không có kids trong leader
+          const demoKids = [
+            { _id: 'kid1', name: 'Nguyễn Văn A', age: 12, nationality: 'Vietnam' },
+            { _id: 'kid2', name: 'Trần Thị B', age: 11, nationality: 'Vietnam' },
+            { _id: 'kid3', name: 'Lê Minh C', age: 13, nationality: 'Vietnam' },
+            { _id: 'kid4', name: 'Phạm Thu D', age: 12, nationality: 'Vietnam' }
+          ];
+          console.log('📋 Using demo kids data:', demoKids);
+          setKids(demoKids);
+        }
+      }
+
+      // Tải danh sách questions
+      try {
+        console.log('❓ Fetching questions...');
+        const questionsResponse = await apiService.getQuestions();
+        
+        console.log('📥 Questions API Response:', questionsResponse);
+        console.log('📥 Questions Response.data:', questionsResponse.data);
+        
+        let questionsData = [];
+        if (questionsResponse && questionsResponse.data) {
+          if (Array.isArray(questionsResponse.data)) {
+            questionsData = questionsResponse.data;
+          } else if (questionsResponse.data.data && Array.isArray(questionsResponse.data.data)) {
+            console.log('📥 Found nested questions data array:', questionsResponse.data.data);
+            questionsData = questionsResponse.data.data;
+          } else {
+            console.log('⚠️ questions response.data structure unexpected:', questionsResponse.data);
+            questionsData = [];
+          }
+        }
+
+        console.log('❓ Questions loaded:', questionsData);
+        console.log('❓ Questions count:', questionsData.length);
+        
+        if (questionsData.length > 0) {
+          setQuestions(questionsData);
+        } else {
+          console.log('🔧 Using fallback questions');
+          setQuestions(FALLBACK_QUESTIONS);
+        }
+      } catch (error) {
+        console.error('❌ Lỗi tải questions:', error);
+        console.log('🔧 Using fallback questions');
+        setQuestions(FALLBACK_QUESTIONS);
       }
 
       // Khôi phục evaluations từ localStorage
+      console.log('💾 Loading saved evaluations from localStorage...');
       const savedEvaluations = localStorageService.getItem(`evaluations_${leader._id}`);
       if (savedEvaluations) {
+        console.log('📥 Found saved evaluations:', savedEvaluations);
         setEvaluations(savedEvaluations);
+      } else {
+        console.log('ℹ️ No saved evaluations found');
       }
 
     } catch (error) {
-      console.error('Lỗi tải dữ liệu:', error);
+      console.error('❌ Lỗi tải dữ liệu:', error);
       toast.error('Không thể tải dữ liệu đánh giá');
     } finally {
       setLoading(false);
+      console.log('✅ Evaluation data loading completed');
     }
   };
 
   // Cập nhật rating
   const updateRating = (kidId, questionId, rating) => {
+    console.log('⭐ Updating rating:', { kidId, questionId, rating });
     const key = `${leader._id}_${kidId}_${questionId}`;
     setEvaluations(prev => ({
       ...prev,
@@ -354,6 +434,7 @@ function EvaluationForm({ camp, subcamp, leader }) {
 
   // Cập nhật comment
   const updateComment = (kidId, questionId, comment) => {
+    console.log('💬 Updating comment:', { kidId, questionId, comment: comment.substring(0, 50) + '...' });
     const key = `${leader._id}_${kidId}_${questionId}`;
     setEvaluations(prev => ({
       ...prev,
@@ -373,7 +454,7 @@ function EvaluationForm({ camp, subcamp, leader }) {
   const calculateProgress = () => {
     const totalQuestions = kids.length * questions.length;
     const completedQuestions = Object.values(evaluations).filter(
-      eval => eval.rating > 0
+      evaluation => evaluation.rating > 0
     ).length;
 
     return totalQuestions > 0 ? Math.round((completedQuestions / totalQuestions) * 100) : 0;
@@ -383,7 +464,7 @@ function EvaluationForm({ camp, subcamp, leader }) {
   const canSubmit = () => {
     const totalQuestions = kids.length * questions.length;
     const completedQuestions = Object.values(evaluations).filter(
-      eval => eval.rating > 0
+      evaluation => evaluation.rating > 0
     ).length;
 
     return completedQuestions === totalQuestions;
@@ -414,8 +495,8 @@ function EvaluationForm({ camp, subcamp, leader }) {
         leaderId: leader._id,
         subcampId: subcamp._id,
         campId: camp._id,
-        evaluations: Object.values(evaluations).map(eval => ({
-          ...eval,
+        evaluations: Object.values(evaluations).map(evaluation => ({
+          ...evaluation,
           isCompleted: true,
           submittedAt: new Date().toISOString()
         }))
@@ -463,7 +544,7 @@ function EvaluationForm({ camp, subcamp, leader }) {
 
           <StatusIndicator>
             <Status online={isOnline}>
-              {isOnline ? <FaWifi /> : <FaWifiSlash />}
+              {isOnline ? <FaWifi /> : <FaTimes />}
               {isOnline ? 'Đã kết nối' : 'Offline'}
             </Status>
 
@@ -503,7 +584,7 @@ function EvaluationForm({ camp, subcamp, leader }) {
       {/* Questions */}
       <QuestionsContainer>
         {questions.map(question => (
-          <QuestionCard key={question.id}>
+          <QuestionCard key={question._id}>
             <QuestionTitle>
               <FaStar />
               {question.text}
@@ -511,7 +592,7 @@ function EvaluationForm({ camp, subcamp, leader }) {
 
             <EvaluationGrid>
               {kids.map(kid => {
-                const evaluationKey = `${leader._id}_${kid._id}_${question.id}`;
+                const evaluationKey = `${leader._id}_${kid._id}_${question._id}`;
                 const evaluation = evaluations[evaluationKey] || {};
 
                 return (
@@ -529,7 +610,7 @@ function EvaluationForm({ camp, subcamp, leader }) {
                             key={rating}
                             type="button"
                             filled={evaluation.rating >= rating}
-                            onClick={() => updateRating(kid._id, question.id, rating)}
+                            onClick={() => updateRating(kid._id, question._id, rating)}
                           >
                             <FaStar />
                           </Star>
@@ -540,7 +621,7 @@ function EvaluationForm({ camp, subcamp, leader }) {
                     <CommentTextarea
                       placeholder="Nhận xét thêm (tùy chọn)..."
                       value={evaluation.comment || ''}
-                      onChange={(e) => updateComment(kid._id, question.id, e.target.value)}
+                      onChange={(e) => updateComment(kid._id, question._id, e.target.value)}
                     />
                   </KidEvaluation>
                 );

@@ -200,21 +200,112 @@ function SubcampSelection({ camp, onSubcampSelect, selectedSubcamp }) {
   const loadSubcamps = async () => {
     try {
       setLoading(true);
+      console.log('🏘️ Loading subcamps for camp:', camp._id);
+      
       const response = await apiService.getSubcampsByCamp(camp._id);
-      setSubcamps(response.data || []);
+      console.log('📥 Subcamps API Response:', response);
+      console.log('📥 Subcamps Response.data:', response.data);
+      console.log('📥 Is subcamps response.data array?', Array.isArray(response.data));
+      
+      // Xử lý API response structure tương tự như các component khác
+      let subcampsData = [];
+      if (response && response.data) {
+        if (Array.isArray(response.data)) {
+          subcampsData = response.data;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          console.log('📥 Found nested subcamps data array:', response.data.data);
+          subcampsData = response.data.data;
+        } else {
+          console.log('⚠️ subcamps response.data structure unexpected:', response.data);
+          subcampsData = [];
+        }
+      }
+      
+      console.log('🏘️ Subcamps loaded:', subcampsData);
+      console.log('🏘️ Subcamps count:', subcampsData.length);
+
+      // Load thêm thông tin progress cho mỗi subcamp
+      const subcampsWithProgress = await Promise.all(
+        subcampsData.map(async (subcamp) => {
+          try {
+            console.log('📊 Loading progress for subcamp:', subcamp._id);
+            const progressResponse = await apiService.getProgress(subcamp._id);
+            console.log('📊 Progress response for', subcamp.name, ':', progressResponse);
+            
+            // Xử lý progress response
+            let progressData = { percentage: 0, totalEvaluations: 0, completedEvaluations: 0 };
+            if (progressResponse && progressResponse.data) {
+              if (progressResponse.data.data && progressResponse.data.data.progress) {
+                progressData = progressResponse.data.data.progress;
+              } else if (progressResponse.data.progress) {
+                progressData = progressResponse.data.progress;
+              }
+            }
+
+            // Load số lượng leaders
+            console.log('👨‍🏫 Loading leaders count for subcamp:', subcamp._id);
+            const leadersResponse = await apiService.getLeadersBySubcamp(subcamp._id);
+            console.log('👨‍🏫 Leaders response for', subcamp.name, ':', leadersResponse);
+            
+            let leadersData = [];
+            if (leadersResponse && leadersResponse.data) {
+              if (Array.isArray(leadersResponse.data)) {
+                leadersData = leadersResponse.data;
+              } else if (leadersResponse.data.data && Array.isArray(leadersResponse.data.data)) {
+                leadersData = leadersResponse.data.data;
+              }
+            }
+
+            const totalLeaders = leadersData.length;
+            const completedLeaders = leadersData.filter(leader => 
+              leader.evaluationProgress?.status === 'completed' || 
+              leader.evaluationStatus === 'completed'
+            ).length;
+
+            const enhancedSubcamp = {
+              ...subcamp,
+              totalLeaders,
+              completedLeaders,
+              totalEvaluations: progressData.totalEvaluations || 0,
+              completedEvaluations: progressData.completedEvaluations || 0,
+              progress: progressData.percentage || 0,
+              averageRating: progressData.averageRating || 0
+            };
+
+            console.log('✅ Enhanced subcamp data:', enhancedSubcamp);
+            return enhancedSubcamp;
+          } catch (error) {
+            console.error(`❌ Error loading progress for ${subcamp.name}:`, error);
+            return {
+              ...subcamp,
+              totalLeaders: 0,
+              completedLeaders: 0,
+              totalEvaluations: 0,
+              completedEvaluations: 0,
+              progress: 0,
+              averageRating: 0
+            };
+          }
+        })
+      );
+
+      console.log('🏘️ Final subcamps with progress:', subcampsWithProgress);
+      setSubcamps(subcampsWithProgress);
     } catch (error) {
-      console.error('Lỗi tải danh sách trại nhỏ:', error);
+      console.error('❌ Lỗi tải danh sách trại nhỏ:', error);
       toast.error('Không thể tải danh sách trại nhỏ');
+      
       // Dữ liệu demo
-      setSubcamps([
+      const demoData = [
         {
           _id: 'subcamp1',
           name: 'Red Dragons',
           description: 'Đội Rồng Đỏ - Năng động và sáng tạo',
           color: '#ff4757',
           totalLeaders: 8,
-          completedEvaluations: 6,
-          totalEvaluations: 8,
+          completedLeaders: 6,
+          totalEvaluations: 40,
+          completedEvaluations: 30,
           progress: 75
         },
         {
@@ -223,8 +314,9 @@ function SubcampSelection({ camp, onSubcampSelect, selectedSubcamp }) {
           description: 'Đội Đại Bàng Xanh - Mạnh mẽ và đoàn kết',
           color: '#3742fa',
           totalLeaders: 6,
-          completedEvaluations: 4,
-          totalEvaluations: 6,
+          completedLeaders: 4,
+          totalEvaluations: 30,
+          completedEvaluations: 20,
           progress: 67
         },
         {
@@ -233,11 +325,15 @@ function SubcampSelection({ camp, onSubcampSelect, selectedSubcamp }) {
           description: 'Đội Sói Xanh - Thông minh và linh hoạt',
           color: '#2ed573',
           totalLeaders: 7,
-          completedEvaluations: 7,
-          totalEvaluations: 7,
+          completedLeaders: 7,
+          totalEvaluations: 35,
+          completedEvaluations: 35,
           progress: 100
         }
-      ]);
+      ];
+      
+      console.log('📋 Using demo subcamps data:', demoData);
+      setSubcamps(demoData);
     } finally {
       setLoading(false);
     }

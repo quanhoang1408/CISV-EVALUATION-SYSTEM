@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { FaTrophy, FaMedal, FaRefresh, FaClock, FaCheck, FaUsers } from 'react-icons/fa';
+import { FaTrophy, FaMedal, FaSync, FaClock, FaCheck, FaUsers } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { apiService } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -294,17 +294,39 @@ function Leaderboard({ camp }) {
       if (!silent) setLoading(true);
       setRefreshing(true);
 
+      console.log('🏆 Loading leaderboard for camp:', camp._id);
       const response = await apiService.getLeaderboard(camp._id);
-      setLeaderboardData(response.data || []);
+      
+      console.log('📥 Leaderboard API Response:', response);
+      console.log('📥 Leaderboard Response.data:', response.data);
+      console.log('📥 Is leaderboard response.data array?', Array.isArray(response.data));
+      
+      // Xử lý API response structure tương tự như các component khác
+      let leaderboardArray = [];
+      if (response && response.data) {
+        if (Array.isArray(response.data)) {
+          leaderboardArray = response.data;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          console.log('📥 Found nested leaderboard data array:', response.data.data);
+          leaderboardArray = response.data.data;
+        } else {
+          console.log('⚠️ leaderboard response.data structure unexpected:', response.data);
+          leaderboardArray = [];
+        }
+      }
+      
+      console.log('🏆 Leaderboard data loaded:', leaderboardArray);
+      console.log('🏆 Leaderboard count:', leaderboardArray.length);
+      setLeaderboardData(leaderboardArray);
       setLastUpdated(new Date());
     } catch (error) {
-      console.error('Lỗi tải bảng xếp hạng:', error);
+      console.error('❌ Lỗi tải bảng xếp hạng:', error);
       if (!silent) {
         toast.error('Không thể tải bảng xếp hạng');
       }
 
-      // Dữ liệu demo
-      setLeaderboardData([
+      // Dữ liệu demo - đảm bảo là array
+      const demoData = [
         {
           _id: 'subcamp3',
           name: 'Green Wolves',
@@ -338,7 +360,10 @@ function Leaderboard({ camp }) {
           completedLeaders: 4,
           lastUpdate: new Date()
         }
-      ]);
+      ];
+      
+      console.log('📋 Using demo leaderboard data:', demoData);
+      setLeaderboardData(demoData);
       setLastUpdated(new Date());
     } finally {
       setLoading(false);
@@ -359,19 +384,26 @@ function Leaderboard({ camp }) {
     }
   };
 
-  // Tính tổng số liệu
-  const totalStats = leaderboardData.reduce((acc, item) => {
-    acc.totalEvaluations += item.totalEvaluations;
-    acc.completedEvaluations += item.completedEvaluations;
-    acc.totalSubcamps += 1;
-    acc.completedSubcamps += item.percentage === 100 ? 1 : 0;
-    return acc;
-  }, {
-    totalEvaluations: 0,
-    completedEvaluations: 0,
-    totalSubcamps: 0,
-    completedSubcamps: 0
-  });
+  // Tính tổng số liệu - đảm bảo leaderboardData là array
+  const totalStats = Array.isArray(leaderboardData) 
+    ? leaderboardData.reduce((acc, item) => {
+        acc.totalEvaluations += item.totalEvaluations || 0;
+        acc.completedEvaluations += item.completedEvaluations || 0;
+        acc.totalSubcamps += 1;
+        acc.completedSubcamps += (item.percentage === 100 ? 1 : 0);
+        return acc;
+      }, {
+        totalEvaluations: 0,
+        completedEvaluations: 0,
+        totalSubcamps: 0,
+        completedSubcamps: 0
+      })
+    : {
+        totalEvaluations: 0,
+        completedEvaluations: 0,
+        totalSubcamps: 0,
+        completedSubcamps: 0
+      };
 
   const overallProgress = totalStats.totalEvaluations > 0 
     ? Math.round((totalStats.completedEvaluations / totalStats.totalEvaluations) * 100)
@@ -393,7 +425,7 @@ function Leaderboard({ camp }) {
           onClick={handleRefresh}
           disabled={refreshing}
         >
-          <FaRefresh className={refreshing ? 'spinning' : ''} />
+          <FaSync className={refreshing ? 'spinning' : ''} />
           {refreshing ? 'Đang cập nhật...' : 'Cập nhật'}
         </RefreshButton>
 
